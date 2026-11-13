@@ -68,3 +68,12 @@ def test_dataloader_batches(dataset_dir):
     )
     x, y = next(iter(make_loader(cfg, "Train", train=True)))
     assert x.shape == (4, 3, 32, 32) and y.shape == (4, 32, 32)
+
+
+def test_mask_with_values_0_and_1_is_kept(dataset_dir):
+    # Dataset v3 stores masks as {0, 1} instead of {0, 255}.
+    p = dataset_dir / "Train" / "masks" / "class_0" / "sample_0.png"
+    m = (np.array(Image.open(p)) > 0).astype(np.uint8)
+    Image.fromarray(m).save(p)
+    _, y = FootDataset(dataset_dir, "Train", image_size=64)[0]
+    assert y.sum() == m.sum()

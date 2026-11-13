@@ -50,3 +50,19 @@ def test_every_loss_is_scalar_and_differentiable(name):
     assert loss.ndim == 0
     loss.backward()
     assert x.grad is not None and torch.isfinite(x.grad).all()
+
+
+def test_focal_alpha_weights_foot_more_than_background():
+    x, y = _batch()
+    plain = FocalLoss(gamma=2.0)(x, y)
+    # alpha=0.5 gives both classes weight 0.5, i.e. exactly half the unweighted loss
+    assert torch.allclose(FocalLoss(gamma=2.0, alpha=0.5)(x, y), plain * 0.5, atol=1e-6)
+    # alpha=0.75 puts weight 0.75 on foot pixels and 0.25 on background
+    w = torch.where(y == 1, 0.75, 0.25)
+    pt = torch.exp(-F.cross_entropy(x, y, reduction="none"))
+    manual = (w * (1 - pt) ** 2 * F.cross_entropy(x, y, reduction="none")).mean()
+    assert torch.allclose(FocalLoss(gamma=2.0, alpha=0.75)(x, y), manual, atol=1e-6)
+
+
+def test_build_loss_passes_alpha():
+    assert build_loss(LossConfig(name="focal", focal_alpha=0.6)).alpha == 0.6

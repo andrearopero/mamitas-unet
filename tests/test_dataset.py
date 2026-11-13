@@ -77,3 +77,23 @@ def test_mask_with_values_0_and_1_is_kept(dataset_dir):
     Image.fromarray(m).save(p)
     _, y = FootDataset(dataset_dir, "Train", image_size=64)[0]
     assert y.sum() == m.sum()
+
+
+def test_gaussian_noise_changes_image_but_not_mask():
+    from torchvision import tv_tensors
+
+    from mamitas.data.augmentations import RandomGaussianNoise
+
+    x = tv_tensors.Image(torch.full((3, 16, 16), 100, dtype=torch.uint8))
+    y = tv_tensors.Mask(torch.zeros(16, 16, dtype=torch.uint8))
+    nx, ny = RandomGaussianNoise(p=1.0, std=10.0)(x, y)
+    assert nx.dtype == torch.uint8 and not torch.equal(nx, x) and torch.equal(ny, y)
+    ox, _ = RandomGaussianNoise(p=0.0)(x, y)
+    assert torch.equal(ox, x)
+
+
+def test_augmentation_works_for_gray_images(dataset_dir):
+    ds = FootDataset(dataset_dir, "Train", in_channels=1, image_size=64, transform=build_train_transforms())
+    for i in range(len(ds)):
+        x, y = ds[i]
+        assert x.shape == (1, 64, 64) and torch.isfinite(x).all() and set(y.unique().tolist()) <= {0, 1}

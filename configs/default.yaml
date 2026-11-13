@@ -1,4 +1,5 @@
 # Full training configuration. Every key is validated by mamitas.schemas.
+# Values follow Iturriago-Salas et al., Computers 2025, 14, 466 (Section 4).
 data:
   # Kaggle: run `!ls /kaggle/input` and use the folder that contains Train/ Valid/ Test/.
   dataset_dir: /kaggle/input/feet-mamitas
@@ -12,18 +13,22 @@ data:
 model:
   num_classes: 2         # 0 = background, 1 = foot
   in_channels: 3         # 3 = RGB, 1 = gray
-  decoder_blocks: [256, 128, 64, 32]
+  decoder_blocks: [256, 128, 64, 64]
   pretrained: true       # ImageNet weights (needs internet)
 
 loss:
   name: ce               # ce | dice | focal
   focal_gamma: 2.0
+  focal_alpha: 0.75      # weight of the foot class
 
 train:
-  batch_size: 8
-  epochs: 30
-  lr: 0.001
-  weight_decay: 0.0001
+  batch_size: 36         # paper: largest that fits a 16 GB P100
+  epochs: 60
+  lr: 0.0001             # decoder + head
+  encoder_lr: 0.00001    # pretrained encoder
+  lr_decay: 0.94         # exponential scheduler, once per epoch
+  weight_decay: 0.0
+  freeze_encoder_epochs: 0   # 0 = off; N = open one encoder stage (deep -> shallow) every N epochs
   seed: 42
   device: auto
   output_dir: runs/default

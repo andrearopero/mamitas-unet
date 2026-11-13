@@ -31,6 +31,32 @@ def set_seed(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
+def build_optimizer(model: nn.Module, cfg: Config):
+    """Adam with a smaller lr for the pretrained encoder, plus per-epoch exponential decay."""
+    encoder = list(model.encoder.parameters())
+    ids = {id(p) for p in encoder}
+    rest = [p for p in model.parameters() if id(p) not in ids]  # decoder + head
+    optimizer = torch.optim.Adam(
+        [{"params": encoder, "lr": cfg.train.encoder_lr}, {"params": rest, "lr": cfg.train.lr}],
+        weight_decay=cfg.train.weight_decay,
+    )
+    return optimizer, torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=cfg.train.lr_decay)
+
+
+def set_encoder_trainable(model: nn.Module, epoch: int, every: int) -> None:
+    """Progressive unfreezing (epoch is 0-based). every=0 keeps the whole encoder trainable.
+
+    Otherwise the encoder starts frozen and one more stage opens every `every` epochs,
+    from the deepest (high-level features) to the shallowest (low-level details).
+    """
+    stages = model.encoder.stages
+    n_open = len(stages) if every == 0 else min(len(stages), epoch // every)
+    for i, stage in enumerate(stages):
+        trainable = i >= len(stages) - n_open
+        for p in stage.parameters():
+            p.requires_grad_(trainable)
+
+
 def _train_epoch(model, loader: DataLoader, criterion, optimizer, device) -> float:
     model.train()
     total, n = 0.0, 0
@@ -72,12 +98,14 @@ def train(cfg: Config) -> list[dict]:
     valid_loader = make_loader(cfg, cfg.data.valid_split, train=False)
     model: nn.Module = build_model(cfg.model).to(device)
     criterion = build_loss(cfg.loss)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.train.lr, weight_decay=cfg.train.weight_decay)
+    optimizer, scheduler = build_optimizer(model, cfg)
 
     history: list[dict] = []
     best_dice = -1.0
     for epoch in range(1, cfg.train.epochs + 1):
+        set_encoder_trainable(model, epoch - 1, cfg.train.freeze_encoder_epochs)
         row = {"epoch": epoch, "train_loss": _train_epoch(model, train_loader, criterion, optimizer, device)}
+        scheduler.step()
         row |= _validate(model, valid_loader, criterion, device)
         history.append(row)
 

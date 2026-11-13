@@ -11,7 +11,7 @@ def build_loss(cfg: LossConfig) -> nn.Module:
         return CELoss()
     if cfg.name == "dice":
         return DiceLoss()
-    return FocalLoss(gamma=cfg.focal_gamma)
+    return FocalLoss(gamma=cfg.focal_gamma, alpha=cfg.focal_alpha)
 
 
 __all__ = ["CELoss", "DiceLoss", "FocalLoss", "build_loss"]

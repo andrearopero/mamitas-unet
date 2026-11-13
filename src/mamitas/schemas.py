@@ -39,7 +39,7 @@ class DataConfig(_Strict):
 class ModelConfig(_Strict):
     num_classes: int = Field(2, ge=2)
     in_channels: Literal[1, 3] = 3
-    decoder_blocks: list[int] = [256, 128, 64, 32]
+    decoder_blocks: list[int] = [256, 128, 64, 64]
     pretrained: bool = True
 
     @field_validator("decoder_blocks")
@@ -53,13 +53,20 @@ class ModelConfig(_Strict):
 class LossConfig(_Strict):
     name: Literal["ce", "dice", "focal"] = "ce"
     focal_gamma: float = Field(2.0, ge=0)
+    focal_alpha: float | None = Field(0.75, gt=0, lt=1)  # weight of the foot class; None = unweighted
 
 
 class TrainConfig(_Strict):
-    batch_size: int = Field(8, gt=0)
-    epochs: int = Field(30, gt=0)
-    lr: float = Field(1e-3, gt=0)
-    weight_decay: float = Field(1e-4, ge=0)
+    # Defaults follow Iturriago-Salas et al., Computers 2025, 14, 466 (Section 4).
+    batch_size: int = Field(36, gt=0)
+    epochs: int = Field(60, gt=0)
+    lr: float = Field(1e-4, gt=0)  # decoder + head
+    encoder_lr: float = Field(1e-5, gt=0)  # pretrained encoder: smaller steps
+    lr_decay: float = Field(0.94, gt=0, le=1)  # ExponentialLR gamma, applied once per epoch
+    weight_decay: float = Field(0.0, ge=0)
+    # Progressive unfreezing: 0 = whole encoder trainable from epoch 1. N > 0 = encoder
+    # starts frozen and one more stage (deepest first) opens every N epochs.
+    freeze_encoder_epochs: int = Field(0, ge=0)
     seed: int = 42
     device: str = "auto"  # "auto" -> cuda if available, else cpu
     output_dir: str = "runs/default"

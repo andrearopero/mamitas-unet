@@ -1,0 +1,34 @@
+# Full training configuration. Every key is validated by mamitas.schemas.
+data:
+  # Kaggle: run `!ls /kaggle/input` and use the folder that contains Train/ Valid/ Test/.
+  dataset_dir: /kaggle/input/feet-mamitas
+  train_split: Train
+  valid_split: Valid
+  test_split: Test
+  image_size: 256        # multiple of 32
+  augment: true
+  num_workers: 2
+
+model:
+  num_classes: 2         # 0 = background, 1 = foot
+  in_channels: 3         # 3 = RGB, 1 = gray
+  decoder_blocks: [256, 128, 64, 32]
+  pretrained: true       # ImageNet weights (needs internet)
+
+loss:
+  name: ce               # ce | dice | focal
+  focal_gamma: 2.0
+
+train:
+  batch_size: 8
+  epochs: 30
+  lr: 0.001
+  weight_decay: 0.0001
+  seed: 42
+  device: auto
+  output_dir: runs/default
+
+predict:
+  split: Test
+  checkpoint: null       # null -> <output_dir>/best.pt
+  output_dir: null       # null -> <output_dir>/predictions

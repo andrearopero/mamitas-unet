@@ -1,0 +1,22 @@
+# Tiny config for smoke tests: CPU-friendly, no internet, 2 epochs.
+data:
+  dataset_dir: tests/fixtures/mini_dataset
+  image_size: 64
+  augment: false
+  num_workers: 0
+
+model:
+  num_classes: 2
+  in_channels: 3
+  decoder_blocks: [32, 16, 16, 8]
+  pretrained: false
+
+loss:
+  name: ce
+
+train:
+  batch_size: 2
+  epochs: 2
+  lr: 0.001
+  device: cpu
+  output_dir: runs/test

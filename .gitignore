@@ -1,0 +1,13 @@
+__pycache__/
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+# data and training artifacts never go to git
+data_raw/
+datasets/
+runs/
+checkpoints/
+*.pt
+*.pth

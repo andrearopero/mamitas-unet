@@ -37,6 +37,15 @@ To compare losses in one notebook, run train + predict once per loss with its ow
 ```
 (`--loss` is `ce`, `dice` or `focal`; the same flag works for `train.py` and `predict.py`.)
 
+Then compare the runs (Test metrics table, validation curves and example masks):
+
+```bash
+!python scripts/plot_results.py --dataset-dir "{p}"
+```
+
+It prints the table and saves `runs/curves.png` and `runs/examples.png`. Use `--losses ce dice`
+for a subset and `--sample sample_5` to show another Test image.
+
 Tested with torch 2.6.0 / torchvision 0.21.0 (the versions of the paper). The pretrained
 MobileNetV3 weights are downloaded on first use, so Internet must be On.
 

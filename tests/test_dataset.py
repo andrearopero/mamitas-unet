@@ -97,3 +97,25 @@ def test_augmentation_works_for_gray_images(dataset_dir):
     for i in range(len(ds)):
         x, y = ds[i]
         assert x.shape == (1, 64, 64) and torch.isfinite(x).all() and set(y.unique().tolist()) <= {0, 1}
+
+
+def test_resolve_dataset_dir_finds_nested_dataset(tmp_path):
+    from mamitas.data.dataset import resolve_dataset_dir
+
+    ds = make_dataset(tmp_path / "wrapper" / "inner" / "ds")
+    assert resolve_dataset_dir(tmp_path / "wrapper", "Train") == ds
+
+
+def test_wrong_root_falls_back_to_kaggle_input(tmp_path, monkeypatch):
+    # Kaggle mounts datasets at different paths depending on the platform version.
+    kaggle = tmp_path / "kaggle_input"
+    make_dataset(kaggle / "datasets" / "owner" / "feet-mamitas")
+    monkeypatch.setattr("mamitas.data.dataset.KAGGLE_INPUT", str(kaggle))
+    ds = FootDataset(tmp_path / "missing" / "feet-mamitas", "Train", image_size=32)
+    assert len(ds) == 6
+
+
+def test_dataset_not_found_message_names_dataset_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr("mamitas.data.dataset.KAGGLE_INPUT", str(tmp_path / "nothing"))
+    with pytest.raises(FileNotFoundError, match="dataset_dir"):
+        FootDataset(tmp_path / "missing", "Train")

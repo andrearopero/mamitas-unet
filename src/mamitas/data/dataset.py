@@ -19,6 +19,8 @@ from torch.utils.data import Dataset
 from torchvision import tv_tensors
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg"}
+KAGGLE_INPUT = "/kaggle/input"
+_announced: set[str] = set()
 # ImageNet statistics: the MobileNetV3 encoder was pretrained with them.
 _RGB_MEAN, _RGB_STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 _GRAY_MEAN, _GRAY_STD = (0.449,), (0.226,)
@@ -30,6 +32,50 @@ def find_child(parent: Path, name: str) -> Path:
         if child.is_dir() and child.name.lower() == name.lower():
             return child
     raise FileNotFoundError(f"No '{name}' folder inside {parent}")
+
+
+def _has_split(directory: Path, split: str) -> bool:
+    try:
+        find_child(find_child(directory, split), "images")
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return True
+
+
+def _subdirs(base: Path, max_depth: int):
+    """Yield `base` and its sub-directories down to `max_depth` levels, breadth first."""
+    level = [base]
+    for _ in range(max_depth + 1):
+        nxt: list[Path] = []
+        for directory in level:
+            yield directory
+            try:
+                nxt.extend(sorted(c for c in directory.iterdir() if c.is_dir()))
+            except OSError:
+                continue
+        level = nxt
+
+
+def resolve_dataset_dir(root: str | Path, split: str = "Train", max_depth: int = 3) -> Path:
+    """Return the folder that contains `<split>/images`.
+
+    Looks in `root` first (itself, then its sub-folders) and, if that fails, under
+    /kaggle/input. Kaggle mounts a dataset at different paths depending on the platform
+    version (/kaggle/input/<name>, /kaggle/input/datasets/<owner>/<name>, ...), so the path
+    written in the YAML may not exist there.
+    """
+    root = Path(root)
+    for base in (b for b in (root, Path(KAGGLE_INPUT)) if b.is_dir()):
+        for directory in _subdirs(base, max_depth):
+            if _has_split(directory, split):
+                if directory != root and str(root) not in _announced:
+                    _announced.add(str(root))
+                    print(f"[mamitas] dataset_dir '{root}' has no '{split}/images'; using '{directory}'")
+                return directory
+    raise FileNotFoundError(
+        f"Could not find '{split}/images' under '{root}' or under {KAGGLE_INPUT}. "
+        "Check data.dataset_dir in the YAML (or pass --dataset-dir)."
+    )
 
 
 def _mask_to_labels(arr: np.ndarray) -> np.ndarray:
@@ -55,7 +101,7 @@ class FootDataset(Dataset):
         self.image_size = image_size
         self.transform = transform
 
-        split_dir = find_child(Path(root), split)
+        split_dir = find_child(resolve_dataset_dir(root, split), split)
         images_dir = find_child(split_dir, "images")
         masks_dir = find_child(split_dir, "masks")
         nested = masks_dir / "class_0"

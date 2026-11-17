@@ -15,21 +15,22 @@ from torchvision import tv_tensors
 from torchvision.transforms import v2
 
 
-class RandomGaussianNoise(v2.Transform):
-    """Add N(0, std) noise (in 0-255 intensity units) to the image with probability p."""
+class RandomGaussianNoise:
+    """Add N(0, std) noise (in 0-255 intensity units) to the image with probability p.
+
+    A plain callable on (image, mask) instead of a `v2.Transform` subclass: the hooks of
+    that base class were renamed between torchvision releases, and Compose only needs a
+    callable, so this works on whatever torchvision the platform ships.
+    """
 
     def __init__(self, p: float = 0.2, std: float = 8.0) -> None:
-        super().__init__()
         self.p, self.std = p, std
 
-    def make_params(self, flat_inputs: list[Any]) -> dict[str, Any]:
-        return {"apply": bool(torch.rand(1).item() < self.p)}
-
-    def transform(self, inpt: Any, params: dict[str, Any]) -> Any:
-        if not params["apply"] or not isinstance(inpt, tv_tensors.Image):
-            return inpt
-        noisy = inpt.float() + torch.randn_like(inpt, dtype=torch.float32) * self.std
-        return tv_tensors.Image(noisy.clamp(0, 255).round().to(inpt.dtype))
+    def __call__(self, image: Any, mask: Any) -> tuple[Any, Any]:
+        if torch.rand(1).item() >= self.p:
+            return image, mask
+        noisy = image.float() + torch.randn(image.shape) * self.std
+        return tv_tensors.Image(noisy.clamp(0, 255).round().to(image.dtype)), mask
 
 
 def build_train_transforms() -> v2.Compose:

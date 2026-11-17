@@ -17,13 +17,20 @@ Open `notebooks/kaggle_train.ipynb` in Kaggle, or create a notebook and run:
 !git clone https://github.com/andrearopero/mamitas-unet
 %cd mamitas-unet
 !pip install .
-!python scripts/train.py --config configs/default.yaml --dataset-dir /kaggle/input/<folder-with-Train-Valid-Test>
-!python scripts/predict.py --config configs/default.yaml --dataset-dir /kaggle/input/<folder-with-Train-Valid-Test>
+!python scripts/train.py --config configs/default.yaml
+!python scripts/predict.py --config configs/default.yaml
 ```
 
-`--dataset-dir` overrides `data.dataset_dir` from the YAML; run `!ls /kaggle/input` to find the
-folder. Outputs (checkpoints, `history.json`, predicted masks, `metrics.json`) go to
-`runs/default/`.
+Use `%cd`, not `!cd`: a `!` command runs in its own shell and the directory change is lost.
+
+Kaggle mounts a dataset at different paths depending on the platform version. If
+`data.dataset_dir` from the YAML does not contain `Train/images`, mamitas searches
+`/kaggle/input` (down to 3 levels) and prints which folder it used. To force a folder, add
+`--dataset-dir <path>` (run `!ls /kaggle/input` to see what is mounted). Outputs
+(checkpoints, `history.json`, predicted masks, `metrics.json`) go to `runs/default/`.
+
+Tested with torch 2.6.0 / torchvision 0.21.0 (the versions of the paper). The pretrained
+MobileNetV3 weights are downloaded on first use, so Internet must be On.
 
 ## Data layout
 
@@ -72,7 +79,7 @@ rotation within 15 degrees, color jitter and Gaussian noise. `freeze_encoder_epo
 the deepest to the shallowest.
 
 Batch 36 needs roughly a 16 GB GPU (the paper used a P100). On a smaller GPU lower
-`train.batch_size`.
+`train.batch_size` (a 4 GB GTX 1650 runs batch 8).
 
 ## Model
 

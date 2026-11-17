@@ -124,3 +124,16 @@ def test_progressive_unfreezing_goes_from_deep_to_shallow():
 def test_training_runs_with_progressive_unfreezing(dataset_dir, tmp_path):
     history = train(_cfg(dataset_dir, tmp_path / "run", epochs=3, freeze_encoder_epochs=1))
     assert len(history) == 3 and all(h["train_loss"] == h["train_loss"] for h in history)
+
+
+def test_script_loss_flag_overrides_yaml(tmp_path):
+    out = tmp_path / "run"
+    r = _run("train.py", "--config", "configs/test.yaml", "--output-dir", str(out), "--loss", "dice")
+    assert r.returncode == 0, r.stderr
+    ckpt = torch.load(out / "best.pt", map_location="cpu", weights_only=True)
+    assert ckpt["config"]["loss"]["name"] == "dice"
+
+
+def test_script_rejects_unknown_loss(tmp_path):
+    r = _run("train.py", "--config", "configs/test.yaml", "--loss", "mse")
+    assert r.returncode != 0 and "invalid choice" in r.stderr

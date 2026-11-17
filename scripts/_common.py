@@ -13,6 +13,7 @@ def load_from_cli(description: str) -> Config:
     p.add_argument("--config", required=True, help="path to a YAML config, e.g. configs/default.yaml")
     p.add_argument("--dataset-dir", help="override data.dataset_dir (handy in Kaggle/Colab)")
     p.add_argument("--output-dir", help="override train.output_dir")
+    p.add_argument("--loss", choices=["ce", "dice", "focal"], help="override loss.name")
     args = p.parse_args()
     try:
         cfg = load_config(args.config)
@@ -22,4 +23,6 @@ def load_from_cli(description: str) -> Config:
         cfg.data.dataset_dir = args.dataset_dir
     if args.output_dir:
         cfg.train.output_dir = args.output_dir
+    if args.loss:
+        cfg.loss.name = args.loss
     return cfg

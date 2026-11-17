@@ -29,6 +29,14 @@ Kaggle mounts a dataset at different paths depending on the platform version. If
 `--dataset-dir <path>` (run `!ls /kaggle/input` to see what is mounted). Outputs
 (checkpoints, `history.json`, predicted masks, `metrics.json`) go to `runs/default/`.
 
+To compare losses in one notebook, run train + predict once per loss with its own output folder:
+
+```bash
+!python scripts/train.py --config configs/default.yaml --loss dice --output-dir runs/dice
+!python scripts/predict.py --config configs/default.yaml --loss dice --output-dir runs/dice
+```
+(`--loss` is `ce`, `dice` or `focal`; the same flag works for `train.py` and `predict.py`.)
+
 Tested with torch 2.6.0 / torchvision 0.21.0 (the versions of the paper). The pretrained
 MobileNetV3 weights are downloaded on first use, so Internet must be On.
 
